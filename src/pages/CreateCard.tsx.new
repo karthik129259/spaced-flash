@@ -1,0 +1,290 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import Flashcard from '../components/Flashcard';
+import TagSelector from '../components/TagSelector';
+import { ArrowLeft, Save, Trash, RefreshCcw, PenLine, Eye } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface CreateCardProps {
+  onSave: (front: string, back: string, tags: string[]) => void;
+  availableTags?: string[];
+}
+
+const CreateCard: React.FC<CreateCardProps> = ({ 
+  onSave, 
+  availableTags = ['Science', 'Math', 'History', 'Language', 'Programming', 'Art', 'Geography'] 
+}) => {
+  const navigate = useNavigate();
+  const [front, setFront] = useState('');
+  const [back, setBack] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isPreview, setIsPreview] = useState(false);
+
+  const handleSave = () => {
+    if (!front || !back) return;
+    onSave(front, back, selectedTags);
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setFront('');
+    setBack('');
+    setSelectedTags([]);
+    setIsPreview(false);
+  };
+  
+  return (
+    <motion.div 
+      className="max-w-4xl mx-auto px-6 py-10"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Button 
+        variant="ghost" 
+        onClick={() => navigate('/')} 
+        className="mb-10 hover:bg-gray-800/50 transition-all duration-300 text-blue-300 group"
+      >
+        <motion.div
+          whileHover={{ x: -3 }}
+          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        >
+          <ArrowLeft className="mr-3 h-5 w-5 group-hover:text-blue-400" />
+        </motion.div> 
+        Back to Home
+      </Button>
+      
+      <motion.h1 
+        className="text-4xl font-bold mb-10 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+      >
+        Create New Flashcard
+      </motion.h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        {/* Editor Panel */}
+        <motion.div 
+          className="perspective-1000"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+        >
+          <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-gray-800/50 transform-gpu hover:border-blue-900/40">
+            <CardHeader className="border-b border-gray-800/30 pb-4">
+              <CardTitle className="text-xl text-blue-300 flex items-center">
+                <PenLine className="mr-2 h-5 w-5" />
+                Flashcard Editor
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-8 pt-8 pb-8">              
+              <div className="space-y-4">
+                <label 
+                  htmlFor="front-content" 
+                  className="block text-sm font-semibold text-blue-300"
+                >
+                  Front Side
+                </label>
+                <textarea
+                  id="front-content"
+                  value={front}
+                  onChange={(e) => setFront(e.target.value)}
+                  className="w-full px-5 py-4 border rounded-lg border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800/80 text-white placeholder-gray-500 resize-none transition-all duration-300 shadow-inner"
+                  rows={4}
+                  placeholder="What's the capital of France?"
+                />
+              </div>
+              
+              <div className="space-y-4 pt-3">
+                <label 
+                  htmlFor="back-content" 
+                  className="block text-sm font-semibold text-blue-300"
+                >
+                  Back Side
+                </label>
+                <textarea
+                  id="back-content"
+                  value={back}
+                  onChange={(e) => setBack(e.target.value)}
+                  className="w-full px-5 py-4 border rounded-lg border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800/80 text-white placeholder-gray-500 resize-none transition-all duration-300 shadow-inner"
+                  rows={4}
+                  placeholder="Paris"
+                />
+              </div>
+              
+              <div className="space-y-4 pt-3">
+                <label 
+                  htmlFor="tags" 
+                  className="block text-sm font-semibold text-blue-300"
+                >
+                  Tags
+                </label>
+                <TagSelector
+                  availableTags={availableTags}
+                  selectedTags={selectedTags}
+                  onChange={setSelectedTags}
+                  placeholder="Add tags..."
+                />
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-4 pt-6 justify-between">                
+                <Button
+                  variant={isPreview ? 'outline' : 'secondary'}
+                  onClick={() => setIsPreview(!isPreview)}
+                  className="flex items-center gap-2 transition-transform duration-300 hover:scale-105 group"
+                >
+                  {isPreview ? (
+                    <PenLine className="h-5 w-5 mr-2 group-hover:text-blue-300" />
+                  ) : (
+                    <Eye className="h-5 w-5 mr-2 group-hover:text-purple-300" />
+                  )}
+                  {isPreview ? 'Back to Edit' : 'Preview Card'}
+                </Button>
+                
+                <div className="flex space-x-4">
+                  <Button
+                    variant="success"
+                    onClick={handleSave}
+                    disabled={!front || !back}
+                    className={`flex items-center gap-2 px-6 py-5 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-900/40 ${!front || !back ? 'opacity-70' : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400'}`}
+                  >
+                    <Save className="h-5 w-5 mr-1" />
+                    Save Card
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={resetForm}
+                    className="flex items-center gap-2 border-gray-700 hover:border-red-700/60 hover:text-red-400 transition-all duration-300"
+                  >
+                    <Trash className="h-5 w-5 mr-1" />
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+        
+        {/* Preview/Tips Panel */}
+        <motion.div 
+          className="perspective-1000"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.4 }}
+        >
+          <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-gray-800/50 transform-gpu hover:border-blue-900/40 h-full">
+            <CardHeader className="border-b border-gray-800/30 pb-4">
+              <CardTitle className={`text-xl flex items-center ${isPreview ? 'text-blue-300' : 'text-purple-300'}`}>
+                {isPreview ? (
+                  <>
+                    <Eye className="mr-2 h-5 w-5" />
+                    Card Preview
+                  </>
+                ) : (
+                  <>
+                    <motion.svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      width="20" 
+                      height="20" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      className="mr-2"
+                      animate={{
+                        rotate: [0, 10, 0, -10, 0],
+                      }}
+                      transition={{
+                        duration: 5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <path d="M18 6H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h13l4-3.5L18 6Z"></path>
+                      <path d="M12 13v8"></path>
+                      <path d="M12 3v3"></path>
+                    </motion.svg>
+                    Card Creation Tips
+                  </>
+                )}
+              </CardTitle>
+            </CardHeader>
+
+            <AnimatePresence mode="wait">
+              <CardContent className={isPreview ? 'p-8 flex items-center justify-center h-[calc(100%-60px)]' : 'p-6 h-[calc(100%-60px)] overflow-auto'}>
+                {isPreview ? (
+                  <motion.div 
+                    key="preview"
+                    initial={{ opacity: 0, scale: 0.9, rotateY: -10 }}
+                    animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, rotateY: 10 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="flex justify-center items-center w-full h-full"
+                  >
+                    <Flashcard front={front || 'Front side preview'} back={back || 'Back side preview'} />
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="tips"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-6 text-gray-200 h-full"
+                  >
+                    <motion.h3 
+                      className="font-semibold text-purple-300 text-lg"
+                      initial={{ x: -20 }}
+                      animate={{ x: 0 }}
+                      transition={{ delay: 0.1, duration: 0.4 }}
+                    >
+                      Tips for effective flashcards:
+                    </motion.h3>
+                    <ul className="list-disc pl-6 space-y-4">
+                      {[
+                        "Keep your content concise and focused",
+                        "Create one concept per card",
+                        "Use clear and simple language",
+                        "Add images or examples when helpful",
+                        "Use tags to organize your cards effectively"
+                      ].map((tip, index) => (
+                        <motion.li 
+                          key={index}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.2 + index * 0.1, duration: 0.3 }}
+                        >
+                          {tip}
+                        </motion.li>
+                      ))}
+                    </ul>
+                    
+                    <motion.div 
+                      className="border-t border-gray-800/50 pt-6 mt-6"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.7, duration: 0.4 }}
+                    >
+                      <h3 className="font-semibold text-purple-300">Markdown supported:</h3>
+                      <p className="text-sm mt-4 bg-gray-800/50 p-4 rounded-lg border border-gray-700/60">
+                        You can use <code className="text-green-300">**bold**</code>, <code className="text-green-300">*italic*</code>, and <code className="text-green-300">`code`</code> in your cards.
+                      </p>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </CardContent>
+            </AnimatePresence>
+          </Card>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+};
+
+export default CreateCard;

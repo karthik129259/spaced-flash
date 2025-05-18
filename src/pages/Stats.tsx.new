@@ -1,0 +1,628 @@
+// filepath: c:\Projects\spaced-flash\src\pages\Stats.tsx
+// Stats.tsx
+import React, { useEffect, useState, useRef } from 'react';
+import { Card, CardContent } from '../components/ui/card';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  LineChart, 
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  AreaChart,
+  Area
+} from 'recharts';
+import StatsCard from '../components/StatsCard';
+import { 
+  ActivitySquare, 
+  Brain, 
+  Calendar, 
+  CheckSquare, 
+  Clock,
+  CalendarClock,
+  Award,
+  LineChart as LineChartIcon
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface Stat {
+  id: string;
+  label: string;
+  value: number;
+  suffix?: string;
+}
+
+interface StatsProps {
+  stats: Stat[];
+}
+
+// Sample data for charts
+const sampleActivityData = [
+  { day: 'Mon', cards: 25 },
+  { day: 'Tue', cards: 40 },
+  { day: 'Wed', cards: 30 },
+  { day: 'Thu', cards: 22 },
+  { day: 'Fri', cards: 38 },
+  { day: 'Sat', cards: 50 },
+  { day: 'Sun', cards: 42 },
+];
+
+const sampleRetentionData = [
+  { month: 'Jan', retention: 65 },
+  { month: 'Feb', retention: 72 },
+  { month: 'Mar', retention: 75 },
+  { month: 'Apr', retention: 80 },
+  { month: 'May', retention: 85 },
+];
+
+// New interactive upcoming reviews data
+const generateUpcomingReviews = () => {
+  const data = [];
+  const today = new Date();
+  
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    
+    // Generate a realistic pattern with more reviews due in the next few days
+    let reviewCount;
+    if (i < 3) {
+      reviewCount = Math.floor(Math.random() * 15) + 10; // 10-25
+    } else if (i < 7) {
+      reviewCount = Math.floor(Math.random() * 10) + 5; // 5-15
+    } else {
+      reviewCount = Math.floor(Math.random() * 5) + 1; // 1-6
+    }
+    
+    // Distribution of difficulty
+    const easy = Math.floor(reviewCount * (Math.random() * 0.3 + 0.3)); // 30-60%
+    const medium = Math.floor(reviewCount * (Math.random() * 0.2 + 0.2)); // 20-40%
+    const hard = reviewCount - easy - medium; // Remainder
+    
+    data.push({
+      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      total: reviewCount,
+      easy,
+      medium,
+      hard,
+      timestamp: date.getTime() // For sorting and comparison
+    });
+  }
+  
+  return data;
+};
+
+// Mastery distribution data
+const masteryDistribution = [
+  { name: 'Mastered', value: 45, color: '#10B981' },
+  { name: 'Learning', value: 30, color: '#3B82F6' },
+  { name: 'Needs Review', value: 15, color: '#F59E0B' },
+  { name: 'Difficult', value: 10, color: '#EF4444' }
+];
+
+const Stats: React.FC<StatsProps> = ({ 
+  stats = [
+    { id: '1', label: 'Total Cards', value: 120 },
+    { id: '2', label: 'Mastery Rate', value: 68 },
+    { id: '3', label: 'Due Today', value: 15 },
+    { id: '4', label: 'Cards Reviewed', value: 64 },
+    { id: '5', label: 'Avg. Ease', value: 2.6 }
+  ] 
+}) => {
+  const [upcomingReviews, setUpcomingReviews] = useState(generateUpcomingReviews());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [isChartHovered, setIsChartHovered] = useState(false);
+  const [chartAnimation, setChartAnimation] = useState(false);
+
+  // Trigger chart animation periodically
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!isChartHovered) {
+        setChartAnimation(true);
+        setTimeout(() => setChartAnimation(false), 2000);
+      }
+    }, 8000);
+    
+    return () => clearInterval(timer);
+  }, [isChartHovered]);
+
+  // Function to handle bar click
+  const handleBarClick = (data: any, index: number) => {
+    setSelectedDay(selectedDay === index ? null : index);
+  };
+
+  // Custom tooltip for the upcoming reviews chart
+  const UpcomingReviewsTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-gray-800 p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+          <p className="font-semibold text-gray-800 dark:text-white">{label}</p>
+          <div className="mt-2 space-y-1">
+            <p className="text-sm flex items-center">
+              <span className="w-3 h-3 rounded-full inline-block mr-2 bg-green-500"></span>
+              Easy: {payload[0].payload.easy}
+            </p>
+            <p className="text-sm flex items-center">
+              <span className="w-3 h-3 rounded-full inline-block mr-2 bg-yellow-500"></span>
+              Medium: {payload[0].payload.medium}
+            </p>
+            <p className="text-sm flex items-center">
+              <span className="w-3 h-3 rounded-full inline-block mr-2 bg-red-500"></span>
+              Hard: {payload[0].payload.hard}
+            </p>
+            <p className="text-sm font-medium text-gray-800 dark:text-white mt-2">
+              Total: {payload[0].payload.total}
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <motion.div 
+      className="max-w-6xl mx-auto px-4 py-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.h1 
+        className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500 mb-8"
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6, type: "spring" }}
+      >
+        Performance Stats
+      </motion.h1>
+      
+      {/* Stats Cards Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 mb-10">
+        <StatsCard 
+          title="Total Cards" 
+          value={stats.find(s => s.id === '1')?.value || 0} 
+          icon={<Brain />} 
+          max={200}
+          threshold={100}
+          animate={true}
+        />
+        <StatsCard 
+          title="Mastery Rate" 
+          value={stats.find(s => s.id === '2')?.value || 0} 
+          growth="+5%" 
+          variant="success" 
+          icon={<CheckSquare />}
+          max={100}
+          threshold={65}
+          animate={true}
+        />
+        <StatsCard 
+          title="Due Today" 
+          value={stats.find(s => s.id === '3')?.value || 0} 
+          icon={<Calendar />}
+          max={30}
+          threshold={10}
+          animate={true}
+        />
+        <StatsCard 
+          title="Cards Reviewed" 
+          value={stats.find(s => s.id === '4')?.value || 0} 
+          growth="+12%" 
+          variant="success" 
+          icon={<ActivitySquare />} 
+          max={100}
+          threshold={50}
+          animate={true}
+        />
+        <StatsCard 
+          title="Avg. Ease" 
+          value={stats.find(s => s.id === '5')?.value || 0} 
+          icon={<Clock />}
+          max={3.0}
+          threshold={2.5}
+          animate={true}
+        />
+      </div>
+      
+      {/* Upcoming Reviews Chart - New and Interactive */}
+      <motion.div 
+        className="mb-10"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.6 }}
+      >
+        <Card className="overflow-hidden border-gray-200 dark:border-gray-800 shadow-lg">
+          <motion.div 
+            className="bg-gradient-to-r from-blue-600 to-purple-600 p-4"
+            animate={{ 
+              backgroundPosition: chartAnimation ? ['0% 0%', '100% 0%', '0% 0%'] : '0% 0%'
+            }}
+            transition={{ duration: 2, ease: "easeInOut" }}
+            style={{
+              backgroundSize: "200% 100%"
+            }}
+          >
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <CalendarClock className="text-white h-6 w-6" />
+                <h2 className="text-white text-xl font-bold">Upcoming Reviews</h2>
+              </div>
+              
+              <AnimatePresence mode="wait">
+                {selectedDay !== null && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm"
+                  >
+                    {upcomingReviews[selectedDay]?.date}: {upcomingReviews[selectedDay]?.total} cards
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+          
+          <CardContent className="p-4">
+            <div className="h-80" 
+              onMouseEnter={() => setIsChartHovered(true)}
+              onMouseLeave={() => setIsChartHovered(false)}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={upcomingReviews}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                  barGap={0}
+                  barCategoryGap="15%"
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                  <XAxis 
+                    dataKey="date" 
+                    padding={{ left: 10, right: 10 }}
+                    tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    tick={{ fill: 'var(--color-text-secondary)', fontSize: 12 }}
+                    width={30}
+                  />
+                  <Tooltip content={<UpcomingReviewsTooltip />} />
+                  <Legend 
+                    verticalAlign="top"
+                    height={36}
+                    formatter={(value) => <span className="text-gray-700 dark:text-gray-300">{value}</span>}
+                  />
+                  <Bar 
+                    dataKey="easy" 
+                    stackId="stack" 
+                    fill="#10B981" 
+                    name="Easy" 
+                    onClick={handleBarClick}
+                    animationDuration={1500}
+                    animationEasing="ease-in-out"
+                    radius={[4, 4, 0, 0]}
+                    className="cursor-pointer"
+                  >
+                    {upcomingReviews.map((entry, index) => (
+                      <Cell 
+                        key={`cell-easy-${index}`}
+                        fill={selectedDay === index ? "#059669" : "#10B981"}
+                        opacity={selectedDay !== null && selectedDay !== index ? 0.6 : 1}
+                      />
+                    ))}
+                  </Bar>
+                  <Bar 
+                    dataKey="medium" 
+                    stackId="stack" 
+                    fill="#F59E0B" 
+                    name="Medium"
+                    onClick={handleBarClick}
+                    animationDuration={1500}
+                    animationEasing="ease-in-out"
+                    className="cursor-pointer"
+                  >
+                    {upcomingReviews.map((entry, index) => (
+                      <Cell 
+                        key={`cell-medium-${index}`}
+                        fill={selectedDay === index ? "#D97706" : "#F59E0B"}
+                        opacity={selectedDay !== null && selectedDay !== index ? 0.6 : 1}
+                      />
+                    ))}
+                  </Bar>
+                  <Bar 
+                    dataKey="hard" 
+                    stackId="stack" 
+                    fill="#EF4444" 
+                    name="Hard"
+                    onClick={handleBarClick}
+                    animationDuration={1500}
+                    animationEasing="ease-in-out"
+                    className="cursor-pointer"
+                  >
+                    {upcomingReviews.map((entry, index) => (
+                      <Cell 
+                        key={`cell-hard-${index}`}
+                        fill={selectedDay === index ? "#DC2626" : "#EF4444"}
+                        opacity={selectedDay !== null && selectedDay !== index ? 0.6 : 1}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Interactive Legend with real-time animation */}
+            <div className="mt-4 flex items-center justify-center space-x-8">
+              <motion.div 
+                className="flex items-center space-x-2"
+                whileHover={{ scale: 1.05 }}
+              >
+                <span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Easy</span>
+                <motion.span 
+                  className="text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full"
+                  animate={{ scale: chartAnimation ? [1, 1.1, 1] : 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  {upcomingReviews.reduce((sum, item) => sum + item.easy, 0)}
+                </motion.span>
+              </motion.div>
+              
+              <motion.div 
+                className="flex items-center space-x-2"
+                whileHover={{ scale: 1.05 }}
+              >
+                <span className="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Medium</span>
+                <motion.span 
+                  className="text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full"
+                  animate={{ scale: chartAnimation ? [1, 1.1, 1] : 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
+                  {upcomingReviews.reduce((sum, item) => sum + item.medium, 0)}
+                </motion.span>
+              </motion.div>
+              
+              <motion.div 
+                className="flex items-center space-x-2"
+                whileHover={{ scale: 1.05 }}
+              >
+                <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Hard</span>
+                <motion.span 
+                  className="text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full"
+                  animate={{ scale: chartAnimation ? [1, 1.1, 1] : 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  {upcomingReviews.reduce((sum, item) => sum + item.hard, 0)}
+                </motion.span>
+              </motion.div>
+            </div>
+            
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="font-medium">Click on any bar</span> to see details for that day
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+      
+      {/* Chart Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Daily Activity Chart */}
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+        >
+          <Card className="shadow-lg border-gray-200 dark:border-gray-800 overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-500 p-4">
+              <div className="flex items-center space-x-3">
+                <ActivitySquare className="text-white h-5 w-5" />
+                <h2 className="text-white text-lg font-bold">Daily Activity</h2>
+              </div>
+            </div>
+            <CardContent className="p-4">
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={sampleActivityData}>
+                    <defs>
+                      <linearGradient id="colorCards" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <XAxis dataKey="day" tick={{ fill: 'var(--color-text-secondary)' }} />
+                    <YAxis tick={{ fill: 'var(--color-text-secondary)' }} width={30} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'var(--color-card-background)',
+                        borderColor: 'var(--color-border)',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="cards" 
+                      stroke="#3B82F6" 
+                      fillOpacity={1}
+                      fill="url(#colorCards)"
+                      strokeWidth={2}
+                      animationDuration={1500}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+        
+        {/* Mastery Distribution Chart - New Chart */}
+        <motion.div
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5, duration: 0.6 }}
+        >
+          <Card className="shadow-lg border-gray-200 dark:border-gray-800 overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4">
+              <div className="flex items-center space-x-3">
+                <Award className="text-white h-5 w-5" />
+                <h2 className="text-white text-lg font-bold">Mastery Distribution</h2>
+              </div>
+            </div>
+            <CardContent className="p-4">
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={masteryDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={120}
+                      paddingAngle={1}
+                      dataKey="value"
+                      animationDuration={1500}
+                      animationEasing="ease-out"
+                    >
+                      {masteryDistribution.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color} 
+                          stroke="transparent"
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => [`${value} cards`, 'Count']}
+                      contentStyle={{ 
+                        backgroundColor: 'var(--color-card-background)',
+                        borderColor: 'var(--color-border)',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      formatter={(value, entry, index) => (
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {value}
+                        </span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+        
+        {/* Retention Rate Chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.6 }}
+          className="lg:col-span-2"
+        >
+          <Card className="shadow-lg border-gray-200 dark:border-gray-800 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500 to-teal-500 p-4">
+              <div className="flex items-center space-x-3">
+                <LineChartIcon className="text-white h-5 w-5" />
+                <h2 className="text-white text-lg font-bold">Retention Rate</h2>
+              </div>
+            </div>
+            <CardContent className="p-4">
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={sampleRetentionData}>
+                    <defs>
+                      <linearGradient id="colorRetention" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <XAxis dataKey="month" tick={{ fill: 'var(--color-text-secondary)' }} />
+                    <YAxis 
+                      domain={[50, 100]} 
+                      tick={{ fill: 'var(--color-text-secondary)' }}
+                      width={30}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [`${value}%`, 'Retention']}
+                      contentStyle={{ 
+                        backgroundColor: 'var(--color-card-background)',
+                        borderColor: 'var(--color-border)',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                      }}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="retention" 
+                      stroke="#10B981"
+                      fill="url(#colorRetention)"
+                      strokeWidth={3}
+                      animationDuration={1500}
+                      activeDot={{ r: 6, stroke: "#047857", strokeWidth: 2, fill: "#10B981" }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+      
+      {/* Learning Tips Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7, duration: 0.6 }}
+      >
+        <Card className="shadow-lg border-gray-200 dark:border-gray-800">
+          <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-4">
+            <h2 className="text-white text-lg font-bold">Tips to Improve Retention</h2>
+          </div>
+          <CardContent className="p-6">
+            <ul className="space-y-4">
+              {[
+                "Review cards regularly, especially those marked as difficult",
+                "Create concise, clear flashcards with one concept per card",
+                "Use mnemonic techniques to help with memorization",
+                "Organize cards with tags to group related concepts",
+                "Trust the spaced repetition algorithm - it's scientifically proven!"
+              ].map((tip, index) => (
+                <motion.li 
+                  key={index}
+                  className="flex items-start gap-3 text-gray-700 dark:text-gray-300"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.8 + index * 0.1 }}
+                >
+                  <div className="mt-1 flex-shrink-0">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                      {index + 1}
+                    </span>
+                  </div>
+                  <p>{tip}</p>
+                </motion.li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+export default Stats;
